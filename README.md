@@ -4,7 +4,9 @@ This is a simple [Wireshark protocol dissector](https://www.wireshark.org/docs/w
 
 ## Installation
 
-1. Copy the [`talk.lua`](talk.lua) file into your [personal Wireshark plugins folder](https://www.wireshark.org/docs/wsug_html_chunked/ChPluginFolders.html).
+First, [check your version of Wireshark for Lua support](https://wiki.wireshark.org/Lua#Getting_Started). Without this, you won't be able to run this code. Otherwise, the installation procedure is as simple as:
+
+1. Copy (or symlink) the [`talk.lua`](talk.lua) script into your [personal or global Wireshark plugins folder](https://www.wireshark.org/docs/wsug_html_chunked/ChPluginFolders.html).
 1. Restart Wireshark, or reload your Lua plugins (available from the Wireshark menu as `Analyze → Reload Lua Plugins`).
 1. Open the provided sample packet capture, [talk.pcap](talk.pcap), in Wireshark.
 
