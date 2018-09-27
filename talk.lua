@@ -82,6 +82,9 @@ local f_callee_tty_name      = Field.new('talk.callee_tty_name')
 -- @param tvbuf The `Tvb` object for the packet.
 -- @param pktinfo The `Pinfo` object representing the packet info.
 -- @param root The `TreeItem` object representing the root of the tree view.
+--
+-- @todo Currently only dissects the client->server messages. Replies
+--       from server->client are shorter and thus still cause errors.
 talk.dissector = function (tvbuf, pktinfo, root)
     pktinfo.cols.protocol:set("Talk")
 
