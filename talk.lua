@@ -32,9 +32,9 @@ local talk_message_types = {
 -- Create protocol fields, which map to structs defined in `talkd.h`.
 local pf_protocol_version = ProtoField.uint8('talk.version', "Protocol version")
 local pf_request_type     = ProtoField.uint8('talk.request_type', "Request type", base.DEC, talk_message_types)
-local pf_reply_type       = ProtoField.uint8('talk.reply_type', "Response type", base.DEC, talk_message_types)
+local pf_reply_type       = ProtoField.uint8('talk.reply_type', "Reply type", base.DEC, talk_message_types)
 local pf_pad              = ProtoField.uint8('talk.pad', "Pad")
-local pf_message_id_num   = ProtoField.uint32('talk.id', "Message ID number")
+local pf_message_id_num   = ProtoField.uint32('talk.msg_id', "Message ID number")
 -- TODO:
 -- The addresses here are actually `struct osockaddr`, which `talkd.h` defines as follows:
 -- /*
@@ -46,13 +46,14 @@ local pf_message_id_num   = ProtoField.uint32('talk.id', "Message ID number")
 --     char            sa_data[14];    /* up to 14 bytes of direct address */
 -- };
 --
--- However, 14 bytes is a lot more than an IPv4 address needs. It's
--- less than IPv6 address needs, though. So I'm not sure where the 2
--- bytes for the address family should be considered.
-local pf_address_port     = ProtoField.uint16('talk.addr_port', "Client port") -- TODO: Not always "client" port.
-local pf_address          = ProtoField.ipv4('talk.addr', "Client address")
-local pf_ctl_address_port = ProtoField.uint16('talk.ctl_addr_port', "Server port") -- TODO: Not always "Server." Depends on isRequest()?
-local pf_ctl_address      = ProtoField.ipv4('talk.ctl_addr', "Server address")
+-- I think that this "address family" is either always 0x0002, which
+-- means that what follows is a 2-byte port number, then a 4-byte IPv4
+-- address. Otherwise, the entire address space is an IPv6 address.
+-- I'm not sure where the port number would be, then, though.
+local pf_address_port     = ProtoField.uint16('talk.addr_port')
+local pf_address          = ProtoField.ipv4('talk.addr')
+local pf_ctl_address_port = ProtoField.uint16('talk.ctl_addr_port')
+local pf_ctl_address      = ProtoField.ipv4('talk.ctl_addr')
 local pf_caller_pid       = ProtoField.int32('talk.pid', "Process ID")
 local pf_caller_name      = ProtoField.string('talk.caller_name', "Caller's name", base.ASCII, "Account name of the calling user")
 local pf_callee_name      = ProtoField.string('talk.callee_name', "Callee's name", base.ASCII, "Account name of the called user")
@@ -97,7 +98,7 @@ local f_protocol_version = Field.new('talk.version')
 local f_request_type     = Field.new('talk.request_type')
 local f_reply_type       = Field.new('talk.reply_type')
 local f_pad              = Field.new('talk.pad')
-local f_message_id_num   = Field.new('talk.id')
+local f_message_id_num   = Field.new('talk.msg_id')
 local f_address_port     = Field.new('talk.addr')
 local f_address          = Field.new('talk.addr')
 local f_ctl_address_port = Field.new('talk.ctl_addr_port')
@@ -112,11 +113,40 @@ local f_callee_tty_name  = Field.new('talk.callee_tty_name')
 -- Requests to the server are called `CTL_MSG`s, while responses from
 -- the server to the client are called `CTL_RESPONSE`s.
 --
+-- There is no field in the protocol indicating the directionality of
+-- the message, so a naive test is simply to check whether or not the
+-- packet is destined to the `talkd` server's listening port.
+--
 -- @param pktinfo A Pinfo object representing the given packet.
 --
 -- @return boolean
 local function isRequest(pktinfo)
     return pktinfo.dst_port == default_settings['port']
+end
+
+--- Helper to print the request message type's name.
+--
+-- The request type is a byte whose value indicates that the client
+-- is asking the server to take a particular action.
+--
+-- See the `talk_message_types` table for these values.
+--
+-- @return string
+local function getRequestType()
+    return talk_message_types[f_request_type()()]
+end
+
+--- Helper to print the reply message type's name.
+--
+-- In a Talk request (message from client to server), this is always
+-- going to be 0x00 (`LEAVE_INVITE`), and is ignored.
+--
+-- The value of the reply type field only matters when the packet is
+-- actually a reply packet (message from server to client).
+--
+-- @return string
+local function getReplyType()
+    return talk_message_types[f_reply_type()()]
 end
 
 --- The actual dissector for the Talk protocol.
@@ -148,15 +178,17 @@ talk.dissector = function (tvbuf, pktinfo, root)
     -- Parse the bytes in the packet buffer and add its information
     -- to the Packet Details pane as an expandable tree view.
     tree:add(pf_protocol_version, tvbuf:range(0, 1))
+
     tree:add(pf_request_type, tvbuf:range(1, 1))
+    local request_type = getRequestType()
 
-    -- Only responses from the server have a reply type (answer code).
-    if not isRequest(pktinfo) then
-        tree:add(pf_reply_type, tvbuf:range(2, 1))
-    end
+    tree:add(pf_reply_type, tvbuf:range(2, 1))
+    local reply_type = getReplyType()
 
-    tree:add(pf_pad, tvbuf:range(3, 1))
+    tree:add(pf_pad, tvbuf:range(3, 1)) -- TODO: What is this for???
+
     tree:add(pf_message_id_num, tvbuf:range(4, 4))
+    local msg_id = tvbuf:range(4, 4):uint()
 
     tree:add(pf_address_port, tvbuf:range(10, 2))
     tree:add(pf_address, tvbuf:range(12, 4))
