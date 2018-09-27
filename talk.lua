@@ -41,67 +41,67 @@ local talk_reply_types = {
 }
 
 -- Create protocol fields, which map to structs defined in `talkd.h`.
-local pf_protocol_version = ProtoField.uint8('talk.version', "Protocol version")
-local pf_request_type     = ProtoField.uint8('talk.request_type', "Request type", base.DEC, talk_request_types)
-local pf_reply_type       = ProtoField.uint8('talk.reply_type', "Reply type", base.DEC, talk_reply_types)
-local pf_pad              = ProtoField.uint8('talk.pad', "Pad")
-local pf_message_id_num   = ProtoField.uint32('talk.msg_id', "Message ID number")
--- TODO:
--- The addresses here are actually `struct osockaddr`, which `talkd.h` defines as follows:
--- /*
---  * 4.3 compat sockaddr
---  */
--- #include <_types.h>
--- struct osockaddr {
---     __uint16_t      sa_family;      /* address family */
---     char            sa_data[14];    /* up to 14 bytes of direct address */
--- };
---
--- I think that this "address family" is either always 0x0002, which
--- means that what follows is a 2-byte port number, then a 4-byte IPv4
--- address. Otherwise, the entire address space is an IPv6 address.
--- I'm not sure where the port number would be, then, though.
-local pf_address_port     = ProtoField.uint16('talk.addr_port')
-local pf_address          = ProtoField.ipv4('talk.addr')
-local pf_ctl_address_port = ProtoField.uint16('talk.ctl_addr_port')
-local pf_ctl_address      = ProtoField.ipv4('talk.ctl_addr')
-local pf_caller_pid       = ProtoField.int32('talk.pid', "Process ID")
-local pf_caller_name      = ProtoField.string('talk.caller_name', "Caller's name", base.ASCII, "Account name of the calling user")
-local pf_callee_name      = ProtoField.string('talk.callee_name', "Callee's name", base.ASCII, "Account name of the called user")
-local pf_callee_tty_name  = ProtoField.string('talk.callee_tty_name', "Callee's TTY name")
+local pfields = {
+    protocol_version = ProtoField.uint8('talk.version', "Protocol version"),
+    request_type     = ProtoField.uint8('talk.request_type', "Request type", base.DEC, talk_request_types),
+    reply_type       = ProtoField.uint8('talk.reply_type', "Reply type", base.DEC, talk_reply_types),
+    pad              = ProtoField.uint8('talk.pad', "Pad"),
+    message_id_num   = ProtoField.uint32('talk.msg_id', "Message ID number"),
+    -- TODO:
+    -- The addresses here are actually `struct osockaddr`, which `talkd.h` defines as follows:
+    -- /*
+    --  * 4.3 compat sockaddr
+    --  */
+    -- #include <_types.h>
+    -- struct osockaddr {
+    --     __uint16_t      sa_family;      /* address family */
+    --     char            sa_data[14];    /* up to 14 bytes of direct address */
+    -- };
+    --
+    -- I think that this "address family" is either always 0x0002, which
+    -- means that what follows is a 2-byte port number, then a 4-byte IPv4
+    -- address. Otherwise, the entire address space is an IPv6 address.
+    -- I'm not sure where the port number would be, then, though.
+    address_port     = ProtoField.uint16('talk.addr_port', "Port"),
+    address          = ProtoField.ipv4('talk.addr', "Address"),
+    ctl_address_port = ProtoField.uint16('talk.ctl_addr_port', "Control port"),
+    ctl_address      = ProtoField.ipv4('talk.ctl_addr', "Control address"),
+    caller_pid       = ProtoField.int32('talk.pid', "Process ID"),
+    caller_name      = ProtoField.string('talk.caller_name', "Caller's name", base.ASCII, "Account name of the calling user"),
+    callee_name      = ProtoField.string('talk.callee_name', "Callee's name", base.ASCII, "Account name of the called user"),
+    callee_tty_name  = ProtoField.string('talk.callee_tty_name', "Callee's TTY name")
+}
+
+-- Register the above fields as part of the Talk protocol.
+talk.fields = pfields
 
 -- The Talk protocol has a client-server architecture. Messages sent
 -- from the client to server are called `CTL_MSG`s, while messages
 -- sent from the server to the client are called `CTL_RESPONSE`s.
 local ctl_msg = {
-    pf_protocol_version,
-    pf_request_type,
-    pf_reply_type,
-    pf_pad,
-    pf_message_id_num,
-    pf_address_port,
-    pf_address,
-    pf_ctl_address_port,
-    pf_ctl_address,
-    pf_caller_pid,
-    pf_caller_name,
-    pf_callee_name,
-    pf_callee_tty_name
+    ["vers"]          = pfields.protocol_version,
+    ["type"]          = pfields.request_type,
+    ["answer"]        = pfields.reply_type,
+    ["pad"]           = pfields.pad,
+    ["id_num"]        = pfields.message_id_num,
+    ["addr_port"]     = pfields.address_port,
+    ["addr"]          = pfields.address,
+    ["ctl_addr_port"] = pfields.ctl_address_port,
+    ["ctl_addr"]      = pfields.ctl_address,
+    ["pid"]           = pfields.caller_pid,
+    ["l_name"]        = pfields.caller_name,
+    ["r_name"]        = pfields.callee_name,
+    ["r_tty"]         = pfields.callee_tty_name
 }
 local ctl_response = {
-    pf_protocol_version,
-    pf_request_type,
-    pf_reply_type,
-    pf_pad,
-    pf_message_id_num,
-    pf_address_port,
-    pf_address
+    ["vers"]      = pfields.protocol_version,
+    ["type"]      = pfields.request_type,
+    ["answer"]    = pfields.reply_type,
+    ["pad"]       = pfields.pad,
+    ["id_num"]    = pfields.message_id_num,
+    ["addr_port"] = pfields.address_port,
+    ["addr"]      = pfields.address
 }
-
--- Register the above fields as a new Protocol to analyze.
--- TODO: Programmatically create this table so as to avoid forgetting
---       to register a given field.
-talk.fields = ctl_msg -- Talk CTL_MSG has all possible protocol fields.
 
 -- Now that we've registered some fields for the `talk` Proto object,
 -- create some analysis fields to view data that has been dissected.
@@ -119,10 +119,7 @@ local f_caller_name      = Field.new('talk.caller_name')
 local f_callee_name      = Field.new('talk.callee_name')
 local f_callee_tty_name  = Field.new('talk.callee_tty_name')
 
---- Helper to determine whether the packet is a request or reply.
---
--- Requests to the server are called `CTL_MSG`s, while responses from
--- the server to the client are called `CTL_RESPONSE`s.
+--- Helper to determine whether the packet is a request.
 --
 -- There is no field in the protocol indicating the directionality of
 -- the message, so a naive test is simply to check whether or not the
@@ -130,9 +127,18 @@ local f_callee_tty_name  = Field.new('talk.callee_tty_name')
 --
 -- @param pktinfo A Pinfo object representing the given packet.
 --
--- @return boolean
+-- @return boolean True if the packet is a message from the client.
 local function isRequest(pktinfo)
     return pktinfo.dst_port == default_settings['port']
+end
+
+--- Helper to determine whether the packet is a reply.
+--
+-- @param pktinfo A Pinfo object representing the given packet.
+--
+-- @return boolean True if the packet is a message from the server.
+local function isReply(pktinfo)
+    return not isRequest(pktinfo)
 end
 
 --- Helper to print the request message type's name.
@@ -149,8 +155,8 @@ end
 
 --- Helper to print the reply message type's name.
 --
--- In a Talk request (message from client to server), this is always
--- going to be 0x00 (`LEAVE_INVITE`), and is ignored.
+-- In a Talk request (message from client to server), this will always
+-- be 0x00 (`SUCCESS`), and is ignored.
 --
 -- The value of the reply type field only matters when the packet is
 -- actually a reply packet (message from server to client).
@@ -187,35 +193,69 @@ talk.dissector = function (tvbuf, pktinfo, root)
 
     -- Parse the bytes in the packet buffer and add its information
     -- to the Packet Details pane as an expandable tree view.
-    tree:add(pf_protocol_version, tvbuf:range(0, 1))
+    local protocol_version = tvbuf:range(0, 1)
+    tree:add(pfields.protocol_version, protocol_version)
 
-    tree:add(pf_request_type, tvbuf:range(1, 1))
-    local request_type = getRequestType()
+    local request_type = tvbuf:range(protocol_version:offset() + protocol_version:len(), 1)
+    tree:add(pfields.request_type, request_type)
 
-    tree:add(pf_reply_type, tvbuf:range(2, 1))
-    local reply_type = getReplyType()
+    local reply_type = tvbuf:range(request_type:offset() + request_type:len(), 1)
+    tree:add(pfields.reply_type, reply_type)
 
-    tree:add(pf_pad, tvbuf:range(3, 1)) -- TODO: What is this for???
+    local pad = tvbuf:range(reply_type:offset() + reply_type:len(), 1) -- TODO: What is this used for???
+    tree:add(pfields.pad, pad)
 
-    tree:add(pf_message_id_num, tvbuf:range(4, 4))
-    local msg_id = tvbuf:range(4, 4):uint()
+    local message_id_num = tvbuf:range(pad:offset() + pad:len(), 4)
+    tree:add(pfields.message_id_num, message_id_num)
 
-    tree:add(pf_address_port, tvbuf:range(10, 2))
-    tree:add(pf_address, tvbuf:range(12, 4))
+    -- TODO: What are the two bytes in between the message_id_num and
+    --       the next field? Part of the `struct osockaddr`?
+
+    -- Always starts at 10 bytes offset from beginning of packet, not
+    -- immediately following the `message_id_num`'s last byte.
+    local address_port = tvbuf:range(10, 2)
+    tree:add(pfields.address_port, address_port)
+
+    local address = tvbuf:range(address_port:offset() + address_port:len(), 4)
+    tree:add(pfields.address, address)
 
     if isRequest(pktinfo) then
-        tree:add(pf_ctl_address_port, tvbuf:range(26, 2))
-        tree:add(pf_ctl_address, tvbuf:range(28, 4))
-        tree:add(pf_caller_pid, tvbuf:range(40, 4))
+        -- TODO: What are the two bytes in between the address and the
+        --       the next field? Part of the `struct osockaddr`?
+
+        -- Always start at 26 bytes offset from the beginning of packet.
+        local ctl_address_port = tvbuf:range(26, 2)
+        tree:add(pfields.ctl_address_port, ctl_address_port)
+
+        local ctl_address = tvbuf:range(ctl_address_port:offset() + ctl_address_port:len(), 4)
+        tree:add(pfields.ctl_address, ctl_address)
+
+        -- Always start at 40 bytes offset from the beginning of packet.
+        local caller_pid = tvbuf:range(40, 4)
+        tree:add(pfields.caller_pid, caller_pid)
+
         -- 12 bytes is the default size of the name string buffers
         -- in `talkd.h`, used for both the caller and callee's names.
-        tree:add(pf_caller_name, tvbuf:range(44, 12))
-        tree:add(pf_callee_name, tvbuf:range(56, 12))
-        -- The TTY name is given a buffer 16 bytes long in `talkd.h`.
-        tree:add(pf_callee_tty_name, tvbuf:range(68, 16))
-    end
+        local caller_name = tvbuf:range(caller_pid:offset() + caller_pid:len(), 12)
+        tree:add(pfields.caller_name, caller_name)
 
-    -- TODO: Still need to dissect the ctl_addr field.
+        local callee_name = tvbuf:range(caller_name:offset() + caller_name:len(), 12)
+        tree:add(pfields.callee_name, callee_name)
+
+        -- The TTY name is given a buffer 16 bytes long in `talkd.h`.
+        local offset = callee_name:offset() + callee_name:len()
+        local last   = pktlen - offset
+        local callee_tty_name = tvbuf:range(offset, last)
+        tree:add(pfields.callee_tty_name, callee_tty_name)
+    else
+        -- TODO: Figure out what these last 8 bytes for a reply packet
+        --       mean. Meanwhile fallback to generic "Data" dissector.
+        Dissector.get('data'):call(
+            tvbuf:range(
+                address:offset() + address:len()
+            ):tvb(), pktinfo, root
+        )
+    end
 
 end
 
