@@ -8,7 +8,7 @@ First, [check your version of Wireshark for Lua support](https://wiki.wireshark.
 
 1. Copy (or symlink) the [`talk.lua`](talk.lua) script into your [personal or global Wireshark plugins folder](https://www.wireshark.org/docs/wsug_html_chunked/ChPluginFolders.html).
 1. Restart Wireshark, or reload your Lua plugins (available from the Wireshark menu as `Analyze → Reload Lua Plugins`).
-1. Open the provided sample packet capture, [talk.pcap](talk.pcap), in Wireshark.
+1. Open any of the provided sample packet capture files in Wireshark.
 
 ## Why? No one uses `talk` anymore.
 

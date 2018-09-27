@@ -20,19 +20,30 @@ local default_settings = {
 -- Create a Proto object, but don't register it yet.
 local talk = Proto("talk", "Talk Protocol")
 
--- Define protocol message types. These are used in the upcoming
--- ProtoField for `talk.type`.
-local talk_message_types = {
+-- Define protocol message and reply opcodes. These are used in the
+-- `ProtoField`s for `talk.request_type` and `talk.reply_type`.
+local talk_request_types = {
     [0] = "LEAVE_INVITE",
     [1] = "LOOK_UP",
     [2] = "DELETE",
     [3] = "ANNOUNCE"
 }
+local talk_reply_types = {
+    [0] = "SUCCESS",           -- Operation completed properly.
+    [1] = "NOT_HERE",          -- Callee not logged in.
+    [2] = "FAILED",            -- Operation failed for unexplained reason.
+    [3] = "MACHINE_UNKNOWN",   -- Caller's machine name unknown.
+    [4] = "PERMISSION_DENIED", -- Callee's TTY doesn't permit announce.
+    [5] = "UNKNOWN_REQUEST",   -- Request has invalid type value.
+    [6] = "BADVERSION",        -- Request has invalid protocol version.
+    [7] = "BADADDR",           -- Request has invalid addr value.
+    [8] = "BADCTLADDR"         -- Request has invalid ctl_addr value.
+}
 
 -- Create protocol fields, which map to structs defined in `talkd.h`.
 local pf_protocol_version = ProtoField.uint8('talk.version', "Protocol version")
-local pf_request_type     = ProtoField.uint8('talk.request_type', "Request type", base.DEC, talk_message_types)
-local pf_reply_type       = ProtoField.uint8('talk.reply_type', "Reply type", base.DEC, talk_message_types)
+local pf_request_type     = ProtoField.uint8('talk.request_type', "Request type", base.DEC, talk_request_types)
+local pf_reply_type       = ProtoField.uint8('talk.reply_type', "Reply type", base.DEC, talk_reply_types)
 local pf_pad              = ProtoField.uint8('talk.pad', "Pad")
 local pf_message_id_num   = ProtoField.uint32('talk.msg_id', "Message ID number")
 -- TODO:
@@ -129,11 +140,11 @@ end
 -- The request type is a byte whose value indicates that the client
 -- is asking the server to take a particular action.
 --
--- See the `talk_message_types` table for these values.
+-- See the `talk_request_types` table for these values.
 --
 -- @return string
 local function getRequestType()
-    return talk_message_types[f_request_type()()]
+    return talk_request_types[f_request_type()()]
 end
 
 --- Helper to print the reply message type's name.
@@ -146,7 +157,7 @@ end
 --
 -- @return string
 local function getReplyType()
-    return talk_message_types[f_reply_type()()]
+    return talk_reply_types[f_reply_type()()]
 end
 
 --- The actual dissector for the Talk protocol.
@@ -163,7 +174,6 @@ talk.dissector = function (tvbuf, pktinfo, root)
     pktinfo.cols.protocol:set("Talk")
 
     -- Get this packet's length.
-    --local pktlen = tvbuf:reported_length_remaining()
     local pktlen = tvbuf:reported_length_remaining()
 
     -- Since Talk does not encapsulate any other protocol, the entire
