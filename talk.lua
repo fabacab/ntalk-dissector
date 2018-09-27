@@ -18,35 +18,35 @@ local default_settings = {
 }
 
 -- Create a Proto object, but don't register it yet.
-local talk = Proto("talk", "Talk Protocol")
+local talk = Proto('talk', 'Talk Protocol')
 
 -- Define protocol message and reply opcodes. These are used in the
 -- `ProtoField`s for `talk.request_type` and `talk.reply_type`.
 local talk_request_types = {
-    [0] = "LEAVE_INVITE",
-    [1] = "LOOK_UP",
-    [2] = "DELETE",
-    [3] = "ANNOUNCE"
+    [0] = 'LEAVE_INVITE',
+    [1] = 'LOOK_UP',
+    [2] = 'DELETE',
+    [3] = 'ANNOUNCE'
 }
 local talk_reply_types = {
-    [0] = "SUCCESS",           -- Operation completed properly.
-    [1] = "NOT_HERE",          -- Callee not logged in.
-    [2] = "FAILED",            -- Operation failed for unexplained reason.
-    [3] = "MACHINE_UNKNOWN",   -- Caller's machine name unknown.
-    [4] = "PERMISSION_DENIED", -- Callee's TTY doesn't permit announce.
-    [5] = "UNKNOWN_REQUEST",   -- Request has invalid type value.
-    [6] = "BADVERSION",        -- Request has invalid protocol version.
-    [7] = "BADADDR",           -- Request has invalid addr value.
-    [8] = "BADCTLADDR"         -- Request has invalid ctl_addr value.
+    [0] = 'SUCCESS',           -- Operation completed properly.
+    [1] = 'NOT_HERE',          -- Callee not logged in.
+    [2] = 'FAILED',            -- Operation failed for unexplained reason.
+    [3] = 'MACHINE_UNKNOWN',   -- Caller's machine name unknown.
+    [4] = 'PERMISSION_DENIED', -- Callee's TTY doesn't permit announce.
+    [5] = 'UNKNOWN_REQUEST',   -- Request has invalid type value.
+    [6] = 'BADVERSION',        -- Request has invalid protocol version.
+    [7] = 'BADADDR',           -- Request has invalid addr value.
+    [8] = 'BADCTLADDR'         -- Request has invalid ctl_addr value.
 }
 
 -- Create protocol fields, which map to structs defined in `talkd.h`.
 local pfields = {
-    protocol_version = ProtoField.uint8('talk.version', "Protocol version"),
-    request_type     = ProtoField.uint8('talk.request_type', "Request type", base.DEC, talk_request_types),
-    reply_type       = ProtoField.uint8('talk.reply_type', "Reply type", base.DEC, talk_reply_types),
-    pad              = ProtoField.uint8('talk.pad', "Pad"),
-    message_id_num   = ProtoField.uint32('talk.msg_id', "Message ID number"),
+    protocol_version = ProtoField.uint8('talk.version', 'Protocol version'),
+    request_type     = ProtoField.uint8('talk.request_type', 'Request type', base.DEC, talk_request_types),
+    reply_type       = ProtoField.uint8('talk.reply_type', 'Reply type', base.DEC, talk_reply_types),
+    pad              = ProtoField.uint8('talk.pad', 'Pad'),
+    message_id_num   = ProtoField.uint32('talk.msg_id', 'Message ID number'),
     -- TODO:
     -- The addresses here are actually `struct osockaddr`, which `talkd.h` defines as follows:
     -- /*
@@ -62,13 +62,13 @@ local pfields = {
     -- means that what follows is a 2-byte port number, then a 4-byte IPv4
     -- address. Otherwise, the entire address space is an IPv6 address.
     -- I'm not sure where the port number would be, then, though.
-    address_port     = ProtoField.uint16('talk.addr_port', "Port"),
-    address          = ProtoField.ipv4('talk.addr', "Address"),
-    ctl_address_port = ProtoField.uint16('talk.ctl_addr_port', "Control port"),
-    ctl_address      = ProtoField.ipv4('talk.ctl_addr', "Control address"),
-    caller_pid       = ProtoField.int32('talk.pid', "Process ID"),
-    caller_name      = ProtoField.string('talk.caller_name', "Caller's name", base.ASCII, "Account name of the calling user"),
-    callee_name      = ProtoField.string('talk.callee_name', "Callee's name", base.ASCII, "Account name of the called user"),
+    address_port     = ProtoField.uint16('talk.addr_port', 'Port'),
+    address          = ProtoField.ipv4('talk.addr', 'Address'),
+    ctl_address_port = ProtoField.uint16('talk.ctl_addr_port', 'Control port'),
+    ctl_address      = ProtoField.ipv4('talk.ctl_addr', 'Control address'),
+    caller_pid       = ProtoField.int32('talk.pid', 'Process ID'),
+    caller_name      = ProtoField.string('talk.caller_name', "Caller's name", base.ASCII, 'Account name of the calling user'),
+    callee_name      = ProtoField.string('talk.callee_name', "Callee's name", base.ASCII, 'Account name of the called user'),
     callee_tty_name  = ProtoField.string('talk.callee_tty_name', "Callee's TTY name")
 }
 
@@ -79,28 +79,28 @@ talk.fields = pfields
 -- from the client to server are called `CTL_MSG`s, while messages
 -- sent from the server to the client are called `CTL_RESPONSE`s.
 local ctl_msg = {
-    ["vers"]          = pfields.protocol_version,
-    ["type"]          = pfields.request_type,
-    ["answer"]        = pfields.reply_type,
-    ["pad"]           = pfields.pad,
-    ["id_num"]        = pfields.message_id_num,
-    ["addr_port"]     = pfields.address_port,
-    ["addr"]          = pfields.address,
-    ["ctl_addr_port"] = pfields.ctl_address_port,
-    ["ctl_addr"]      = pfields.ctl_address,
-    ["pid"]           = pfields.caller_pid,
-    ["l_name"]        = pfields.caller_name,
-    ["r_name"]        = pfields.callee_name,
-    ["r_tty"]         = pfields.callee_tty_name
+    ['vers']          = pfields.protocol_version,
+    ['type']          = pfields.request_type,
+    ['answer']        = pfields.reply_type,
+    ['pad']           = pfields.pad,
+    ['id_num']        = pfields.message_id_num,
+    ['addr_port']     = pfields.address_port,
+    ['addr']          = pfields.address,
+    ['ctl_addr_port'] = pfields.ctl_address_port,
+    ['ctl_addr']      = pfields.ctl_address,
+    ['pid']           = pfields.caller_pid,
+    ['l_name']        = pfields.caller_name,
+    ['r_name']        = pfields.callee_name,
+    ['r_tty']         = pfields.callee_tty_name
 }
 local ctl_response = {
-    ["vers"]      = pfields.protocol_version,
-    ["type"]      = pfields.request_type,
-    ["answer"]    = pfields.reply_type,
-    ["pad"]       = pfields.pad,
-    ["id_num"]    = pfields.message_id_num,
-    ["addr_port"] = pfields.address_port,
-    ["addr"]      = pfields.address
+    ['vers']      = pfields.protocol_version,
+    ['type']      = pfields.request_type,
+    ['answer']    = pfields.reply_type,
+    ['pad']       = pfields.pad,
+    ['id_num']    = pfields.message_id_num,
+    ['addr_port'] = pfields.address_port,
+    ['addr']      = pfields.address
 }
 
 -- Now that we've registered some fields for the `talk` Proto object,
@@ -110,7 +110,7 @@ local f_request_type     = Field.new('talk.request_type')
 local f_reply_type       = Field.new('talk.reply_type')
 local f_pad              = Field.new('talk.pad')
 local f_message_id_num   = Field.new('talk.msg_id')
-local f_address_port     = Field.new('talk.addr')
+local f_address_port     = Field.new('talk.addr_port')
 local f_address          = Field.new('talk.addr')
 local f_ctl_address_port = Field.new('talk.ctl_addr_port')
 local f_ctl_address      = Field.new('talk.ctl_addr')
@@ -158,9 +158,6 @@ end
 -- In a Talk request (message from client to server), this will always
 -- be 0x00 (`SUCCESS`), and is ignored.
 --
--- The value of the reply type field only matters when the packet is
--- actually a reply packet (message from server to client).
---
 -- @return string
 local function getReplyType()
     return talk_reply_types[f_reply_type()()]
@@ -177,7 +174,7 @@ end
 talk.dissector = function (tvbuf, pktinfo, root)
 
     -- Display protocol name in Packet List pane's Protocol column.
-    pktinfo.cols.protocol:set("Talk")
+    pktinfo.cols.protocol:set('Talk')
 
     -- Get this packet's length.
     local pktlen = tvbuf:reported_length_remaining()
@@ -219,7 +216,9 @@ talk.dissector = function (tvbuf, pktinfo, root)
     local address = tvbuf:range(address_port:offset() + address_port:len(), 4)
     tree:add(pfields.address, address)
 
+    local str_info = ''
     if isRequest(pktinfo) then
+        str_info = 'CTL_MSG: '
         -- TODO: What are the two bytes in between the address and the
         --       the next field? Part of the `struct osockaddr`?
 
@@ -247,7 +246,43 @@ talk.dissector = function (tvbuf, pktinfo, root)
         local last   = pktlen - offset
         local callee_tty_name = tvbuf:range(offset, last)
         tree:add(pfields.callee_tty_name, callee_tty_name)
+
+        -- Set text for the tree items in the Packet Details pane, and
+        -- set text for the Info column in the Packet List pane.
+        if 'LOOK_UP' == getRequestType() then
+            str_info = str_info .. '"' .. f_caller_name()() .. '" looking for invitation from "' .. f_callee_name()() .. '"'
+        elseif 'ANNOUNCE' == getRequestType() then
+            str_info = str_info .. 'Ringing "'
+                .. f_callee_name()() .. '", "' ..  f_caller_name()() .. '" calling'
+            tree:append_text(', ' .. f_caller_name()() .. ' ringing ' .. f_callee_name()())
+        elseif 'LEAVE_INVITE' == getRequestType() then
+            str_info = str_info .. 'Leave invitation for "' .. f_callee_name()() .. '"'
+                .. ' from ' .. f_caller_name()() .. '@'
+                .. tostring(f_address()()) .. ':' .. tostring(f_address_port()())
+        elseif 'DELETE' == getRequestType() then
+            str_info = str_info .. 'Delete message ID ' .. f_message_id_num()()
+        end
+        pktinfo.cols.info:set(str_info)
     else
+        -- Set text for the tree items in the Packet Details pane, and
+        -- set text for the Info column in the Packet List pane.
+        str_info = 'CTL_RESPONSE: '
+        if 'LOOK_UP' == getRequestType() and 'SUCCESS' == getReplyType() then
+            str_info = str_info .. 'Found invitation: call ' .. tostring(f_address()()) .. ':' .. tostring(f_address_port()())
+                .. ' to connect'
+        elseif 'LOOK_UP' == getRequestType() and 'NOT_HERE' == getReplyType() then
+            str_info = str_info .. 'No existing invitation; message ID ' .. f_message_id_num()()
+        elseif 'ANNOUNCE' == getRequestType() and 'SUCCESS' == getReplyType() then
+            str_info = str_info .. 'Successful announce; message ID ' .. f_message_id_num()()
+        elseif 'ANNOUNCE' == getRequestType() and 'NOT_HERE' == getReplyType() then
+            str_info = str_info .. 'Callee is not here; message ID ' .. f_message_id_num()()
+        elseif 'LEAVE_INVITE' == getRequestType() and 'SUCCESS' == getReplyType() then
+            str_info = str_info .. 'Successfully left invitation; message ID ' .. f_message_id_num()()
+        elseif 'DELETE' == getRequestType() then
+            str_info = str_info .. 'Deleted message'
+        end
+        pktinfo.cols.info:set(str_info)
+
         -- TODO: Figure out what these last 8 bytes for a reply packet
         --       mean. Meanwhile fallback to generic "Data" dissector.
         Dissector.get('data'):call(
@@ -260,4 +295,4 @@ talk.dissector = function (tvbuf, pktinfo, root)
 end
 
 -- Invoke our dissector for a specific UDP port.
-DissectorTable.get("udp.port"):add(default_settings.port, talk)
+DissectorTable.get('udp.port'):add(default_settings.port, talk)
