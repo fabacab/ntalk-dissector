@@ -1,9 +1,18 @@
--- File: talk.lua
---
 -- This is a simple Wireshark/`tshark` plugin written in Lua. It is
 -- a protocol dissector for the equally simple protocol used by the
 -- original `talk(1)` program and its server counterpart, `talkd(8)`.
+--
+-- I have attempted to comment my code as thoroughly as I understand
+-- it, including using LDoc conventions. See
+--
+--     https://stevedonovan.github.io/ldoc/
+--
+-- for details on LDoc and usage.
+--
+-- @script talk
+-- @license GPL-3.0-or-later
 
+-- Choose some sensible defaults.
 local default_settings = {
     port = 518
 }
@@ -51,8 +60,62 @@ talk.fields = {
     pf_callee_tty_name
 }
 
--- Create the actual dissector for our protocol.
-function talk.dissector(tbuf, pktinfo, root)
+-- Now that we've registered some fields for the `talk` Proto object,
+-- create some analysis fields to view data that has been dissected.
+local f_protocol_version = Field.new('talk.version')
+local f_message_type     = Field.new('talk.type')
+local f_answer_code      = Field.new('talk.answer')
+local f_pad              = Field.new('talk.pad')
+local f_message_id_num   = Field.new('talk.id')
+-- TODO: The osockaddr struct's "addr" field.
+-- TODO: The osockaddr struct's "ctl_addr" field.
+local f_caller_pid       = Field.new('talk.pid')
+local f_caller_name      = Field.new('talk.caller_name')
+local f_callee_name      = Field.new('talk.callee_name')
+local f_callee_tty_name      = Field.new('talk.callee_tty_name')
+
+--- The actual dissector for the Talk protocol.
+--
+-- The callback function that Wireshark calls when disssecting a
+-- given packet matching the Talk protocol's UDP port.
+--
+-- @param tvbuf The `Tvb` object for the packet.
+-- @param pktinfo The `Pinfo` object representing the packet info.
+-- @param root The `TreeItem` object representing the root of the tree view.
+talk.dissector = function (tvbuf, pktinfo, root)
+    pktinfo.cols.protocol:set("Talk")
+
+    -- Get this packet's length.
+    local pktlen = tvbuf:reported_length_remaining()
+
+    -- Since Talk does not encapsulate any other protocol, the entire
+    -- packet is part of the Talk protocol, so its whole range should
+    -- be added to the Packet Details pane.
+    local tree = root:add(talk, tvbuf:range(0, pktlen))
+
+    -- TODO: Make sure the packet seems sensible. I.e., not malformed
+    --       in some way. Should also add some hints for the analyst,
+    --       probably in the form of Wireshark "expert info" fields.
+
+    -- Parse the bytes in the packet buffer and add its information
+    -- to the Packet Details pane as an expandable tree view.
+    tree:add(pf_protocol_version, tvbuf:range(0, 1))
+    tree:add(pf_message_type, tvbuf:range(1, 1))
+    tree:add(pf_answer_code, tvbuf:range(2, 1))
+    tree:add(pf_pad, tvbuf:range(3, 1))
+    tree:add(pf_message_id_num, tvbuf:range(4, 4))
+
+    -- TODO: Still need to dissect the addr and ctl_addr fields.
+
+    tree:add(pf_caller_pid, tvbuf:range(40, 4))
+
+    -- 12 bytes is the default size of the name string buffers
+    -- in `talkd.h`, used for both the caller and callee's names.
+    tree:add(pf_caller_name, tvbuf:range(44, 12))
+    tree:add(pf_callee_name, tvbuf:range(56, 12))
+
+    -- The TTY name is given a buffer 16 bytes long in `talkd.h`.
+    tree:add(pf_callee_tty_name, tvbuf:range(68, 16))
 end
 
 -- Invoke our dissector for a specific UDP port.
