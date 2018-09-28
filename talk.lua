@@ -276,6 +276,8 @@ talk.dissector = function (tvbuf, pktinfo, root)
             str_info = str_info .. 'Successful announce; message ID ' .. f_message_id_num()()
         elseif 'ANNOUNCE' == getRequestType() and 'NOT_HERE' == getReplyType() then
             str_info = str_info .. 'Callee is not here; message ID ' .. f_message_id_num()()
+        elseif 'ANNOUNCE' == getRequestType() and 'PERMISSION_DENIED' == getReplyType() then
+            str_info = str_info .. 'Callee is not accepting messages; message ID ' .. f_message_id_num()()
         elseif 'LEAVE_INVITE' == getRequestType() and 'SUCCESS' == getReplyType() then
             str_info = str_info .. 'Successfully left invitation; message ID ' .. f_message_id_num()()
         elseif 'DELETE' == getRequestType() then
